@@ -21,7 +21,6 @@ public class ResurrectionArkMod implements ModInitializer {
 		ModBlockEntities.registerAll();
 		ModItemGroups.registerItemGroups();
 		MobRegisterEvent.register();
-
 		ModScreenHandlers.register(); // ← これを追加
 
 		System.out.println("Resurrection Ark initialized!");

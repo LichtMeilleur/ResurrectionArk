@@ -33,19 +33,4 @@ public class ResurrectionArkBlock extends Block {
     public BlockState getPlacementState(ItemPlacementContext ctx) {
         return this.getDefaultState().with(FACING, ctx.getHorizontalPlayerFacing().getOpposite());
     }
-
-    @Override
-    public ActionResult onUse(BlockState state, World world, BlockPos pos,
-                              PlayerEntity player, Hand hand, BlockHitResult hit) {
-
-        if (world.isClient) return ActionResult.SUCCESS;
-
-        BlockEntity be = world.getBlockEntity(pos);
-        if (be instanceof ResurrectionArkBlockEntity arkBe) {
-            player.openHandledScreen(arkBe);
-            return ActionResult.CONSUME;
-        }
-
-        return ActionResult.PASS;
-    }
 }

@@ -16,10 +16,10 @@ public class ModItemGroups {
             new Identifier(ResurrectionArkMod.MOD_ID, "resurrection_ark_group"),
             FabricItemGroup.builder()
                     .displayName(Text.translatable("itemgroup.resurrection_ark"))
-                    .icon(() -> new ItemStack(ModBlocks.LINK_BLOCK)) // アイコンにLinkBlockを設定
+                    .icon(() -> new ItemStack(ModBlocks.RESURRECTION_ARK_BLOCK)) // アイコンにLinkBlockを設定
                     .entries((displayContext, entries) -> {
                         entries.add(ModItems.RESURRECTION_CROSS);
-                        entries.add(ModBlocks.LINK_BLOCK); // ブロックを登録
+                        entries.add(ModBlocks.RESURRECTION_ARK_BLOCK); // ブロックを登録
                         // 後で追加アイテムもここに書ける
                     })
                     .build()

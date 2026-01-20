@@ -8,7 +8,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.server.MinecraftServer;
 
-public class ResurrectionPackets {
+public class ResurrectionArkPackets {
     public static final Identifier RESURRECT = new Identifier("resurrection_ark", "resurrect");
 
     // クライアント側呼び出し用
