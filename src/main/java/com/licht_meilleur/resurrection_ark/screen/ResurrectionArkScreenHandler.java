@@ -1,14 +1,19 @@
 package com.licht_meilleur.resurrection_ark.screen;
 
+import com.licht_meilleur.resurrection_ark.block.entity.ResurrectionArkBlockEntity;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
+
+import java.util.UUID;
 
 public class ResurrectionArkScreenHandler extends ScreenHandler {
 
@@ -18,6 +23,12 @@ public class ResurrectionArkScreenHandler extends ScreenHandler {
     public ResurrectionArkScreenHandler(int syncId, PlayerInventory inventory, BlockPos arkPos) {
         super(ModScreenHandlers.RESURRECTION_ARK, syncId);
         this.arkPos = arkPos;
+
+        // ★GUIを開いた瞬間に「死亡状態」を更新
+        // （サーバーでのみ意味がある）
+        if (inventory.player instanceof ServerPlayerEntity sp) {
+            updateDeadFlags(sp);
+        }
     }
 
     // クライアント側：ExtendedScreenHandlerType から呼ばれる（bufからposを受け取る）
@@ -31,7 +42,9 @@ public class ResurrectionArkScreenHandler extends ScreenHandler {
 
     @Override
     public boolean canUse(PlayerEntity player) {
-        return true;
+        // 距離チェック（適当でOK。近くでしか開けないように）
+        Vec3d center = Vec3d.ofCenter(arkPos);
+        return player.squaredDistanceTo(center) <= 64.0; // 8ブロック以内
     }
 
     @Override
@@ -40,46 +53,57 @@ public class ResurrectionArkScreenHandler extends ScreenHandler {
     }
 
     // =========================
-    // ★ 蘇生処理（サーバー側）
+    // ★ 死亡状態更新（開いたとき）
     // =========================
-    public void attemptResurrect(int index, ServerPlayerEntity player) {
+    private void updateDeadFlags(ServerPlayerEntity player) {
+        if (!(player.getWorld() instanceof ServerWorld sw)) return;
+        if (!(sw.getBlockEntity(arkPos) instanceof ResurrectionArkBlockEntity be)) return;
 
-        final int COST = 32;
+        boolean changed = false;
 
-        if (!hasEmeralds(player, COST)) {
-            player.sendMessage(Text.literal("エメラルドが足りません（必要: 32）"), false);
-            return;
-        }
+        for (ResurrectionArkBlockEntity.StoredMob mob : be.getStoredMobs()) {
+            UUID id = mob.uuid;
+            if (id == null) continue;
 
-        removeEmeralds(player, COST);
+            Entity e = sw.getEntity(id);
+            boolean aliveNow = (e instanceof LivingEntity le) && le.isAlive();
 
-        // TODO: 次のステップで Mob 蘇生処理を実装
-        player.sendMessage(Text.literal("蘇生しました！（仮）"), false);
-    }
+            boolean newDead = !aliveNow;
+            if (mob.isDead != newDead) {
+                mob.isDead = newDead;
+                changed = true;
+            }
 
-    private boolean hasEmeralds(ServerPlayerEntity player, int amount) {
-        int count = 0;
-        for (ItemStack stack : player.getInventory().main) {
-            if (stack.getItem() == Items.EMERALD) {
-                count += stack.getCount();
-                if (count >= amount) return true;
+            // 生きているならHPを最新化（表示用）
+            if (aliveNow) {
+                LivingEntity le = (LivingEntity) e;
+                float newMax = le.getMaxHealth();
+                float newCur = le.getHealth();
+
+                if (mob.maxHp != newMax) { mob.maxHp = newMax; changed = true; }
+                if (mob.currentHp != newCur) { mob.currentHp = newCur; changed = true; }
             }
         }
-        return false;
+
+        // 変更があったときだけ同期
+        if (changed) {
+            be.markDirty();
+            // BlockEntity側で markDirtyAndSync() を public にしているならそれを呼ぶのが理想
+            // ここでは最低限 markDirty() でOK（クライアント反映が遅いなら公開syncに切り替え）
+        }
     }
 
-    private void removeEmeralds(ServerPlayerEntity player, int amount) {
-        int remaining = amount;
+    // =========================
+    // ★ 蘇生処理（UUID指定）
+    // 画面の「蘇生ボタン」から送られてきたUUIDを受け取って、BEに委譲する
+    // =========================
+    public void attemptResurrect(UUID mobUuid, ServerPlayerEntity player) {
+        if (mobUuid == null) return;
 
-        for (int i = 0; i < player.getInventory().main.size(); i++) {
-            ItemStack stack = player.getInventory().main.get(i);
-            if (stack.getItem() != Items.EMERALD) continue;
+        if (!(player.getWorld() instanceof ServerWorld sw)) return;
+        if (!(sw.getBlockEntity(arkPos) instanceof ResurrectionArkBlockEntity be)) return;
 
-            int remove = Math.min(stack.getCount(), remaining);
-            stack.decrement(remove);
-            remaining -= remove;
-
-            if (remaining <= 0) break;
-        }
+        // BlockEntity側に実処理がある前提
+        be.attemptResurrect(mobUuid, player);
     }
 }

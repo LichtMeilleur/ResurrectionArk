@@ -67,6 +67,9 @@ public class ResurrectionArkBlock extends Block implements BlockEntityProvider {
         }
 
         // ✅ 通常右クリック：GUI
+        arkBe.refreshAliveStatesOnServer();  // 先に状態確定
+        arkBe.markDirty();                   // 保存フラグ
+        world.updateListeners(pos, state, state, 3); // クライアントへBE更新
         player.openHandledScreen(arkBe);
         return ActionResult.CONSUME;
 

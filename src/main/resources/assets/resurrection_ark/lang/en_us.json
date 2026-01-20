@@ -4,5 +4,13 @@
   "block.resurrection_ark.resurrection_ark": "Resurrection Ark",
   "item.resurrection_ark.resurrection_ark": "Resurrection Ark",
 
-  "item.resurrection_ark.resurrection_cross": "Resurrection Cross"
+  "item.resurrection_ark.resurrection_cross": "Resurrection Cross",
+  "gui.resurrection_ark.resurrect": "Resurrect",
+  "gui.resurrection_ark.delete": "Delete",
+  "gui.resurrection_ark.delete_confirm": "Delete this registration?",
+  "gui.resurrection_ark.status_dead": "Status: DEAD",
+  "gui.resurrection_ark.status_alive": "Status: ALIVE",
+  "gui.resurrection_ark.max_hp": "Max HP: %s",
+  "gui.resurrection_ark.hp": "HP: %s"
 }
+

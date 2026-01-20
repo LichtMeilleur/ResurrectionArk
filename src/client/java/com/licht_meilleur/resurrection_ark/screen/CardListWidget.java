@@ -12,13 +12,15 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
-import java.util.UUID;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.IntConsumer;
-import java.util.function.Consumer;;
+import java.util.UUID;
+import java.util.function.Consumer;
 
 public class CardListWidget implements Drawable, Element, Selectable {
 
@@ -27,6 +29,12 @@ public class CardListWidget implements Drawable, Element, Selectable {
 
     private static final Identifier CARD_TEX =
             new Identifier("resurrection_ark", "textures/gui/resurrection_ark_gui.png");
+
+    // ★ボタン画像は「クラスのフィールド」として宣言（render内に書かない）
+    private static final Identifier BTN_TEX =
+            new Identifier("resurrection_ark", "textures/gui/resurrection_ark_gui_button.png");
+    private static final Identifier BTN_DOWN_TEX =
+            new Identifier("resurrection_ark", "textures/gui/resurrection_ark_gui_buttondown.png");
 
     private final int x, y, width, height;
     private final int gap = 8;
@@ -37,6 +45,7 @@ public class CardListWidget implements Drawable, Element, Selectable {
     private boolean focused = false;
 
     private final Consumer<UUID> onDeleteRequested;
+    private final Consumer<UUID> onResurrectRequested;
 
     // カード内の座標（名刺画像基準）
     private static final int PREVIEW_X = 18;
@@ -44,8 +53,14 @@ public class CardListWidget implements Drawable, Element, Selectable {
     private static final int PREVIEW_W = 72;
     private static final int PREVIEW_H = 72;
 
-    private static final int NAME_X = 100;
-    private static final int NAME_Y = 12;
+    // 名前（黒線の上あたり）
+    private static final int NAME_X = 150;
+    private static final int NAME_Y = 4;
+
+    // 黒枠の右側からステータスを書き始める
+    private static final int STAT_X = PREVIEW_X + PREVIEW_W + 12;
+    private static final int STAT_Y = PREVIEW_Y + 6;
+    private static final int STAT_LINE = 10;
 
     // コスト表示位置
     private static final int COST_ICON_X = 118;
@@ -69,46 +84,65 @@ public class CardListWidget implements Drawable, Element, Selectable {
     // データ
     // =====================
     public static class CardData {
-        public final UUID uuid;  // ★追加
+        public final UUID uuid;
         public final String name;
         public final EntityType<? extends LivingEntity> type;
         public final int cost;
         public final int scale;
+        public final NbtCompound nbt; // 見た目反映用
+        public final float maxHp;
+        public final float currentHp; // ★finalにして確実に初期化
+        public final boolean isDead;
 
         private LivingEntity cached;
 
-        public CardData(UUID uuid, String name, EntityType<? extends LivingEntity> type, int cost, int scale) {
+        public CardData(UUID uuid, String name, EntityType<? extends LivingEntity> type,
+                        int cost, int scale, NbtCompound nbt,
+                        float maxHp, float currentHp, boolean isDead) {
             this.uuid = uuid;
             this.name = name;
             this.type = type;
             this.cost = cost;
             this.scale = scale;
+            this.nbt = nbt;
+            this.maxHp = maxHp;
+            this.currentHp = currentHp;
+            this.isDead = isDead;
         }
 
         public LivingEntity getOrCreateEntity(MinecraftClient client) {
             if (cached != null) return cached;
             if (client.world == null) return null;
-            cached = type.create(client.world);
+
+            LivingEntity e = type.create(client.world);
+            if (e == null) return null;
+
+            if (nbt != null) {
+                e.readNbt(nbt.copy());
+            }
+
+            cached = e;
             return cached;
         }
     }
 
-    public String getCardName(int index) {
-        if (index < 0 || index >= cards.size()) return "(unknown)";
-        return cards.get(index).name;
-    }
-
-
-    public CardListWidget(int x, int y, int width, int height, Consumer<UUID> onDeleteRequested) {
+    public CardListWidget(int x, int y, int width, int height,
+                          Consumer<UUID> onResurrectRequested,
+                          Consumer<UUID> onDeleteRequested) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+        this.onResurrectRequested = onResurrectRequested;
         this.onDeleteRequested = onDeleteRequested;
     }
 
     public void addCard(CardData data) {
         cards.add(data);
+    }
+
+    public void clearCache() {
+        for (CardData cd : cards) cd.cached = null;
     }
 
     public void removeCard(int index) {
@@ -127,12 +161,12 @@ public class CardListWidget implements Drawable, Element, Selectable {
         return Math.max(0, contentHeight() - height);
     }
 
-
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         context.enableScissor(x, y, x + width, y + height);
 
         int startY = y - scrollY;
+        var tr = MinecraftClient.getInstance().textRenderer;
 
         for (int i = 0; i < cards.size(); i++) {
             int cardY = startY + i * (CARD_H + gap);
@@ -143,63 +177,81 @@ public class CardListWidget implements Drawable, Element, Selectable {
 
             // 1) 背景
             RenderSystem.setShaderTexture(0, CARD_TEX);
-            context.drawTexture(
-                    CARD_TEX,
-                    x, cardY,
-                    0, 0,
-                    CARD_W, CARD_H,
-                    255, 156
-            );
+            context.drawTexture(CARD_TEX, x, cardY, 0, 0, CARD_W, CARD_H, 255, 156);
+
+            if (cd.isDead) {
+                context.fill(x, cardY, x + CARD_W, cardY + CARD_H, 0x88000000);
+            }
 
             // 2) 名前
-            context.drawText(
-                    MinecraftClient.getInstance().textRenderer,
-                    cd.name,
-                    x + NAME_X,
-                    cardY + NAME_Y,
-                    0xFFFFFF,
-                    false
-            );
+            context.drawText(tr, cd.name, x + NAME_X, cardY + NAME_Y, 0xFFFFFF, false);
 
-            // 2.5) 削除ボタン表示（X）
-            context.drawText(
-                    MinecraftClient.getInstance().textRenderer,
-                    "X",
-                    x + DEL_X + 5,
-                    cardY + DEL_Y + 4,
-                    0xFF5555,
-                    false
-            );
+            // 2.5) 削除ボタン（X）
+            context.drawText(tr, "X", x + DEL_X + 5, cardY + DEL_Y + 4, 0xFF5555, false);
 
-            // 3) コスト
+            // 3) ステータス表示（保存値を使う）
+            float maxHp = cd.maxHp;
+            float curHp = cd.currentHp;
+
+            // 念のため fallback（保存が0の時だけ）
+            LivingEntity preview = cd.getOrCreateEntity(MinecraftClient.getInstance());
+            if ((maxHp <= 0.01f) && preview != null) {
+                maxHp = preview.getMaxHealth();
+                curHp = preview.getHealth();
+            }
+
+            context.drawText(tr,
+                    Text.translatable("gui.resurrection_ark.max_hp", String.format("%.1f", maxHp)),
+                    x + STAT_X, cardY + STAT_Y, 0xFFFFFF, false);
+
+            context.drawText(tr,
+                    Text.translatable("gui.resurrection_ark.hp", String.format("%.1f", curHp)),
+                    x + STAT_X, cardY + STAT_Y + STAT_LINE, 0xFFFFFF, false);
+
+            int statusColor = cd.isDead ? 0xFFFF5555 : 0xFF55FF55;
+            Text statusText = cd.isDead
+                    ? Text.translatable("gui.resurrection_ark.status_dead")
+                    : Text.translatable("gui.resurrection_ark.status_alive");
+            context.drawText(tr, statusText,
+                    x + STAT_X, cardY + STAT_Y + STAT_LINE * 2, statusColor, false);
+
+            // 4) コスト
             ItemStack emerald = new ItemStack(Items.EMERALD);
             context.drawItem(emerald, x + COST_ICON_X, cardY + COST_ICON_Y);
-            context.drawText(
-                    MinecraftClient.getInstance().textRenderer,
-                    "x" + cd.cost,
-                    x + COST_TEXT_X,
-                    cardY + COST_TEXT_Y,
-                    0xFFFFFF,
-                    false
-            );
+            context.drawText(tr, "x" + cd.cost, x + COST_TEXT_X, cardY + COST_TEXT_Y, 0xFFFFFF, false);
 
-            // 4) Mobモデル
-            LivingEntity entity = cd.getOrCreateEntity(MinecraftClient.getInstance());
-            if (entity != null) {
+            // 5) Mobモデル
+            if (preview != null) {
                 int centerX = x + PREVIEW_X + PREVIEW_W / 2;
                 int baseY = cardY + PREVIEW_Y + PREVIEW_H;
-                int scale = cd.scale;
-
                 InventoryScreen.drawEntity(
                         context,
                         centerX,
                         baseY,
-                        scale,
+                        cd.scale,
                         (float) (mouseX - centerX),
                         (float) (mouseY - baseY),
-                        entity
+                        preview
                 );
             }
+
+            // 6) 蘇生ボタン（画像＋文字）
+            boolean hovered =
+                    mouseX >= x + RES_BTN_X && mouseX < x + RES_BTN_X + RES_BTN_W &&
+                            mouseY >= cardY + RES_BTN_Y && mouseY < cardY + RES_BTN_Y + RES_BTN_H;
+
+            Identifier btn = hovered ? BTN_DOWN_TEX : BTN_TEX;
+            RenderSystem.setShaderTexture(0, btn);
+            context.drawTexture(btn,
+                    x + RES_BTN_X, cardY + RES_BTN_Y,
+                    0, 0,
+                    RES_BTN_W, RES_BTN_H,
+                    RES_BTN_W, RES_BTN_H);
+
+            Text resurrectText = Text.translatable("gui.resurrection_ark.resurrect");
+            context.drawText(tr, resurrectText,
+                    x + RES_BTN_X + 6, cardY + RES_BTN_Y + 6,
+                    0xFFFFFF, false);
         }
 
         context.disableScissor();
@@ -237,18 +289,20 @@ public class CardListWidget implements Drawable, Element, Selectable {
         // 削除ボタン
         if (localX >= DEL_X && localX < DEL_X + DEL_W
                 && withinY >= DEL_Y && withinY < DEL_Y + DEL_H) {
-
             UUID uuid = cards.get(index).uuid;
-            if (onDeleteRequested != null) {
-                onDeleteRequested.accept(uuid);
-            }
+            if (onDeleteRequested != null) onDeleteRequested.accept(uuid);
             return true;
         }
 
-        // 蘇生ボタン当たり判定
+        // 蘇生ボタン
         if (localX >= RES_BTN_X && localX < RES_BTN_X + RES_BTN_W
                 && withinY >= RES_BTN_Y && withinY < RES_BTN_Y + RES_BTN_H) {
-            System.out.println("[ResurrectionArk] RESURRECT CLICK index=" + index + " mob=" + cards.get(index).name);
+
+            // 生存中なら押しても何もしない（将来メッセージ出してもOK）
+            if (!cards.get(index).isDead) return true;
+
+            UUID uuid = cards.get(index).uuid;
+            if (onResurrectRequested != null) onResurrectRequested.accept(uuid);
             return true;
         }
 
@@ -279,6 +333,4 @@ public class CardListWidget implements Drawable, Element, Selectable {
     public SelectionType getType() {
         return this.focused ? SelectionType.FOCUSED : SelectionType.NONE;
     }
-
-
 }

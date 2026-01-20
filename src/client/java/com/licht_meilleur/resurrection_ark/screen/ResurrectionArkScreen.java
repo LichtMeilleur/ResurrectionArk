@@ -38,8 +38,8 @@ public class ResurrectionArkScreen extends HandledScreen<ResurrectionArkScreenHa
                     }
                     this.client.setScreen(this);
                 },
-                Text.literal("登録削除の確認"),
-                Text.literal("このMob登録を削除しますか？")
+                Text.translatable("gui.resurrection_ark.delete"),
+                Text.translatable("gui.resurrection_ark.delete_confirm")
         ));
     }
 
@@ -52,6 +52,16 @@ public class ResurrectionArkScreen extends HandledScreen<ResurrectionArkScreenHa
         buf.writeBlockPos(handler.getArkPos());
         buf.writeUuid(uuid);
         ClientPlayNetworking.send(ResurrectionArkServerPackets.DELETE_MOB, buf);
+    }
+    private void sendResurrectPacket(UUID uuid) {
+        if (uuid == null) {
+            ResurrectionArkMod.LOGGER.error("sendResurrectPacket called with null uuid");
+            return;
+        }
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeBlockPos(handler.getArkPos());
+        buf.writeUuid(uuid);
+        ClientPlayNetworking.send(ResurrectionArkServerPackets.RESURRECT, buf);
     }
 
     public ResurrectionArkScreen(ResurrectionArkScreenHandler handler, PlayerInventory inventory, Text title) {
@@ -70,10 +80,14 @@ public class ResurrectionArkScreen extends HandledScreen<ResurrectionArkScreenHa
         // “カードを縦に並べてスクロール”領域（ひとまず画面全体）
         int listX = left;
         int listY = top;
-        int listW = 255;
-        int listH = 156 + 80; // 少しはみ出してスクロール確認しやすく
+        int listW = this.backgroundWidth;   // 255
+        int listH = this.backgroundHeight;  // 156
 
-        cardList = new CardListWidget(listX, listY, listW, listH, this::requestDelete);
+
+        cardList = new CardListWidget(listX, listY, listW, listH,
+                this::sendResurrectPacket,
+                this::requestDelete
+        );
 
         // ★ここは「今Arkに登録されているMob一覧」を入れる場所
         // いまはダミーでOK（表示確認用）
@@ -100,7 +114,11 @@ public class ResurrectionArkScreen extends HandledScreen<ResurrectionArkScreenHa
                                 mob.name,
                                 livingType,
                                 32,
-                                28
+                                28,
+                                mob.data, // ★これがNBT
+                                mob.maxHp,
+                                mob.currentHp,
+                                mob.isDead
                         ));
                     }
                 }

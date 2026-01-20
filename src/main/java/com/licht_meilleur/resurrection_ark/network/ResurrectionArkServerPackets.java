@@ -25,7 +25,7 @@ public class ResurrectionArkServerPackets {
                 RESURRECT,
                 (server, player, handler, buf, responseSender) -> {
 
-                    int idx = buf.readInt();
+                    UUID idx = buf.readUuid();
 
                     server.execute(() -> {
                         if (player.currentScreenHandler instanceof ResurrectionArkScreenHandler screenHandler) {

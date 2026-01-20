@@ -1,0 +1,9 @@
+{
+  "gui.resurrection_ark.resurrect": "蘇生",
+  "gui.resurrection_ark.delete": "削除",
+  "gui.resurrection_ark.delete_confirm": "この登録を削除しますか？",
+  "gui.resurrection_ark.status_dead": "状態: 死亡",
+  "gui.resurrection_ark.status_alive": "状態: 生存",
+  "gui.resurrection_ark.max_hp": "最大HP: %s",
+  "gui.resurrection_ark.hp": "HP: %s"
+}
