@@ -1,5 +1,7 @@
 package com.licht_meilleur.resurrection_ark.screen;
 
+import com.licht_meilleur.resurrection_ark.ResurrectionArkMod;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.entity.player.PlayerInventory;
@@ -11,44 +13,44 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.client.gui.screen.ConfirmScreen;
 
+import java.util.UUID;
+
 public class ResurrectionArkScreen extends HandledScreen<ResurrectionArkScreenHandler> {
 
     private CardListWidget cardList;
 
-    private void requestDelete(int index) {
+    private void requestDelete(UUID uuid) {
         if (this.client == null) return;
+        if (uuid == null) {
+            System.out.println("[ResurrectionArk] requestDelete called with null uuid");
+            return;
+        }
 
-        // いま表示しているカード名（メッセージに出す用）
-        String name = "(unknown)";
-        try {
-            name = cardList.getCardName(index); // 後述：CardListWidgetに追加する
-        } catch (Exception ignored) {}
-
-        final int idx = index;
-        final String mobName = name;
+        UUID target = uuid;
 
         this.client.setScreen(new ConfirmScreen(
                 confirmed -> {
-                    // confirmed == true なら削除実行
                     if (confirmed) {
-                        sendDeletePacket(idx);
-                        if (cardList != null) cardList.removeCard(idx);
+                        sendDeletePacket(target);
+                        // ★ここは安定優先で閉じる（成功/失敗はチャットに出る）
+                        this.close();
+                        return;
                     }
-                    // 元の画面に戻す（このScreenを復帰）
                     this.client.setScreen(this);
                 },
                 Text.literal("登録削除の確認"),
-                Text.literal("「" + mobName + "」を削除しますか？")
+                Text.literal("このMob登録を削除しますか？")
         ));
     }
 
-    private void sendDeletePacket(int index) {
-        BlockPos pos = handler.getArkPos();
-
-        PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-        buf.writeBlockPos(pos);
-        buf.writeInt(index);
-
+    private void sendDeletePacket(UUID uuid) {
+        if (uuid == null) {
+            ResurrectionArkMod.LOGGER.error("sendDeletePacket called with null uuid");
+            return;
+        }
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeBlockPos(handler.getArkPos());
+        buf.writeUuid(uuid);
         ClientPlayNetworking.send(ResurrectionArkServerPackets.DELETE_MOB, buf);
     }
 
@@ -94,7 +96,7 @@ public class ResurrectionArkScreen extends HandledScreen<ResurrectionArkScreenHa
                                 (net.minecraft.entity.EntityType<? extends net.minecraft.entity.LivingEntity>) type;
 
                         cardList.addCard(new CardListWidget.CardData(
-                                mob.mobUuid,
+                                mob.uuid,
                                 mob.name,
                                 livingType,
                                 32,

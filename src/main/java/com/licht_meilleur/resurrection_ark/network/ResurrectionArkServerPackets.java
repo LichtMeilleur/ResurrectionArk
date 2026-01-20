@@ -8,6 +8,8 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
+import java.util.UUID;
+
 public class ResurrectionArkServerPackets {
 
     public static final Identifier RESURRECT =
@@ -39,21 +41,26 @@ public class ResurrectionArkServerPackets {
                 (server, player, handler, buf, responseSender) -> {
 
                     BlockPos pos = buf.readBlockPos();
-                    int index = buf.readInt();
+                    UUID mobUuid = buf.readUuid();
 
-                    // ★こっちでも確認したいならログOK
+                    // ★ ここで player は使える
                     ResurrectionArkMod.LOGGER.info(
-                            "DELETE request by {} uuid={} pos={} index={}",
+                            "DELETE request by {} playerUuid={} mobUuid={} pos={}",
                             player.getName().getString(),
                             player.getUuid(),
-                            pos,
-                            index
+                            mobUuid,
+                            pos
                     );
 
                     server.execute(() -> {
-                        if (!(player.getWorld().getBlockEntity(pos) instanceof ResurrectionArkBlockEntity arkBe)) return;
+                        if (!(player.getWorld().getBlockEntity(pos)
+                                instanceof ResurrectionArkBlockEntity arkBe)) {
+                            return;
+                        }
 
-                        boolean ok = arkBe.removeMob(index);
+
+                        boolean ok = arkBe.removeMob(mobUuid);
+
                         if (ok) {
                             player.sendMessage(Text.literal("登録を削除しました。"), false);
                         } else {

@@ -18,6 +18,7 @@ import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntConsumer;
+import java.util.function.Consumer;;
 
 public class CardListWidget implements Drawable, Element, Selectable {
 
@@ -35,7 +36,7 @@ public class CardListWidget implements Drawable, Element, Selectable {
 
     private boolean focused = false;
 
-    private final IntConsumer onDeleteRequested;
+    private final Consumer<UUID> onDeleteRequested;
 
     // カード内の座標（名刺画像基準）
     private static final int PREVIEW_X = 18;
@@ -64,12 +65,41 @@ public class CardListWidget implements Drawable, Element, Selectable {
     private static final int DEL_W = 16;
     private static final int DEL_H = 16;
 
+    // =====================
+    // データ
+    // =====================
+    public static class CardData {
+        public final UUID uuid;  // ★追加
+        public final String name;
+        public final EntityType<? extends LivingEntity> type;
+        public final int cost;
+        public final int scale;
+
+        private LivingEntity cached;
+
+        public CardData(UUID uuid, String name, EntityType<? extends LivingEntity> type, int cost, int scale) {
+            this.uuid = uuid;
+            this.name = name;
+            this.type = type;
+            this.cost = cost;
+            this.scale = scale;
+        }
+
+        public LivingEntity getOrCreateEntity(MinecraftClient client) {
+            if (cached != null) return cached;
+            if (client.world == null) return null;
+            cached = type.create(client.world);
+            return cached;
+        }
+    }
+
     public String getCardName(int index) {
         if (index < 0 || index >= cards.size()) return "(unknown)";
         return cards.get(index).name;
     }
 
-    public CardListWidget(int x, int y, int width, int height, IntConsumer onDeleteRequested) {
+
+    public CardListWidget(int x, int y, int width, int height, Consumer<UUID> onDeleteRequested) {
         this.x = x;
         this.y = y;
         this.width = width;
@@ -207,7 +237,11 @@ public class CardListWidget implements Drawable, Element, Selectable {
         // 削除ボタン
         if (localX >= DEL_X && localX < DEL_X + DEL_W
                 && withinY >= DEL_Y && withinY < DEL_Y + DEL_H) {
-            if (onDeleteRequested != null) onDeleteRequested.accept(index);
+
+            UUID uuid = cards.get(index).uuid;
+            if (onDeleteRequested != null) {
+                onDeleteRequested.accept(uuid);
+            }
             return true;
         }
 
@@ -246,31 +280,5 @@ public class CardListWidget implements Drawable, Element, Selectable {
         return this.focused ? SelectionType.FOCUSED : SelectionType.NONE;
     }
 
-    // =====================
-    // データ
-    // =====================
-    public static class CardData {
-        public final String name;
-        public final EntityType<? extends LivingEntity> type;
-        public final int cost;
-        public final int scale;
-        public final UUID mobUuid;
 
-        private LivingEntity cached;
-
-        public CardData(UUID mobUuid, String name, EntityType<? extends LivingEntity> type, int cost, int scale) {
-            this.mobUuid = mobUuid;
-            this.name = name;
-            this.type = type;
-            this.cost = cost;
-            this.scale = scale;
-        }
-
-        public LivingEntity getOrCreateEntity(MinecraftClient client) {
-            if (cached != null) return cached;
-            if (client.world == null) return null;
-            cached = type.create(client.world);
-            return cached;
-        }
-    }
 }
