@@ -22,6 +22,18 @@ public class ResurrectionData extends PersistentState {
         return linkedMobs;
     }
 
+    /**
+     * 指定した UUID のエントリを削除します。
+     * 削除に成功した場合は markDirty() を呼び true を返します。
+     */
+    public boolean remove(UUID id) {
+        if (this.linkedMobs.remove(id) != null) {
+            this.markDirty();
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public NbtCompound writeNbt(NbtCompound nbt) {
         NbtCompound mobTag = new NbtCompound();

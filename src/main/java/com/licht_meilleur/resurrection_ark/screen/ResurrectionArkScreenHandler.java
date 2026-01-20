@@ -3,12 +3,14 @@ package com.licht_meilleur.resurrection_ark.screen;
 import com.licht_meilleur.resurrection_ark.data.ResurrectionData;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.registry.Registries;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.server.network.ServerPlayerEntity; // 修正: 正しいパッケージ
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -76,5 +78,11 @@ public class ResurrectionArkScreenHandler extends ScreenHandler {
     @Override
     public boolean canUse(net.minecraft.entity.player.PlayerEntity player) {
         return true;
+    }
+
+    @Override
+    public ItemStack quickMove(PlayerEntity player, int index) {
+        // 最低限の stub 実装（必要に応じてスロット移動を実装）
+        return ItemStack.EMPTY;
     }
 }
