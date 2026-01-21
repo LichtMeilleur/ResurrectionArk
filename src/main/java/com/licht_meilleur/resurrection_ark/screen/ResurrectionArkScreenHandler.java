@@ -34,6 +34,19 @@ public class ResurrectionArkScreenHandler extends ScreenHandler {
     // クライアント側：ExtendedScreenHandlerType から呼ばれる（bufからposを受け取る）
     public ResurrectionArkScreenHandler(int syncId, PlayerInventory inventory, PacketByteBuf buf) {
         this(syncId, inventory, buf.readBlockPos());
+
+        int count = buf.readVarInt();
+        for (int i = 0; i < count; i++) {
+            UUID uuid = buf.readUuid();
+            var typeId = buf.readIdentifier();
+            String name = buf.readString();
+            float maxHp = buf.readFloat();
+            float curHp = buf.readFloat();
+            boolean isDead = buf.readBoolean();
+            var nbt = buf.readNbt();
+
+            snapshots.add(new MobSnapshot(uuid, typeId, name, maxHp, curHp, isDead, nbt));
+        }
     }
 
     public BlockPos getArkPos() {
@@ -105,5 +118,32 @@ public class ResurrectionArkScreenHandler extends ScreenHandler {
 
         // BlockEntity側に実処理がある前提
         be.attemptResurrect(mobUuid, player);
+    }
+    private final java.util.List<MobSnapshot> snapshots = new java.util.ArrayList<>();
+
+    public static class MobSnapshot {
+        public final UUID uuid;
+        public final net.minecraft.util.Identifier typeId;
+        public final String name;
+        public final float maxHp;
+        public final float currentHp;
+        public final boolean isDead;
+        public final net.minecraft.nbt.NbtCompound data;
+
+        public MobSnapshot(UUID uuid, net.minecraft.util.Identifier typeId, String name,
+                           float maxHp, float currentHp, boolean isDead,
+                           net.minecraft.nbt.NbtCompound data) {
+            this.uuid = uuid;
+            this.typeId = typeId;
+            this.name = name;
+            this.maxHp = maxHp;
+            this.currentHp = currentHp;
+            this.isDead = isDead;
+            this.data = data;
+        }
+    }
+
+    public java.util.List<MobSnapshot> getSnapshots() {
+        return snapshots;
     }
 }

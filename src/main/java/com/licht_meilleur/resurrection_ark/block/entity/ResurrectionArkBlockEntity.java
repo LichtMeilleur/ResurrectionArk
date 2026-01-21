@@ -46,7 +46,25 @@ public class ResurrectionArkBlockEntity extends BlockEntity implements ExtendedS
 
     @Override
     public void writeScreenOpeningData(ServerPlayerEntity player, PacketByteBuf buf) {
+        // ① pos
         buf.writeBlockPos(this.pos);
+
+        // ② 開く直前に確定（ここでやるのが一番安全）
+        refreshAliveStatesOnServer();
+
+        // ③ mob数
+        buf.writeVarInt(storedMobs.size());
+
+        // ④ mobデータ（必要な分だけ）
+        for (StoredMob m : storedMobs) {
+            buf.writeUuid(m.uuid);
+            buf.writeIdentifier(m.typeId);
+            buf.writeString(m.name);
+            buf.writeFloat(m.maxHp);
+            buf.writeFloat(m.currentHp);
+            buf.writeBoolean(m.isDead);
+            buf.writeNbt(m.data); // null可
+        }
     }
 
     // =========================

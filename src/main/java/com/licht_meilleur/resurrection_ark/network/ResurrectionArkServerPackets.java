@@ -25,12 +25,12 @@ public class ResurrectionArkServerPackets {
                 RESURRECT,
                 (server, player, handler, buf, responseSender) -> {
 
-                    UUID idx = buf.readUuid();
+                    BlockPos pos = buf.readBlockPos();
+                    UUID mobUuid = buf.readUuid();
 
                     server.execute(() -> {
-                        if (player.currentScreenHandler instanceof ResurrectionArkScreenHandler screenHandler) {
-                            screenHandler.attemptResurrect(idx, player);
-                        }
+                        if (!(player.getWorld().getBlockEntity(pos) instanceof ResurrectionArkBlockEntity arkBe)) return;
+                        arkBe.attemptResurrect(mobUuid, player);
                     });
                 }
         );

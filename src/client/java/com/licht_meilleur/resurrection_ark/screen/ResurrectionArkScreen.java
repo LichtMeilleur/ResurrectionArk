@@ -94,34 +94,28 @@ public class ResurrectionArkScreen extends HandledScreen<ResurrectionArkScreenHa
         // cardList.addCard(...); はあなたの現状に合わせて残してOK
         // ★開いているArkのBlockEntityから登録Mobを読み取ってカードにする
         if (this.client != null && this.client.world != null) {
-            var be = this.client.world.getBlockEntity(handler.getArkPos());
-            if (be instanceof com.licht_meilleur.resurrection_ark.block.entity.ResurrectionArkBlockEntity arkBe) {
+            for (var mob : handler.getSnapshots()) {
+                var type = net.minecraft.registry.Registries.ENTITY_TYPE.get(mob.typeId);
 
-                for (com.licht_meilleur.resurrection_ark.block.entity.ResurrectionArkBlockEntity.StoredMob mob
-                        : arkBe.getStoredMobs()) {
+                var created = type.create(this.client.world);
+                if (created instanceof net.minecraft.entity.LivingEntity) {
+                    @SuppressWarnings("unchecked")
+                    net.minecraft.entity.EntityType<? extends net.minecraft.entity.LivingEntity> livingType =
+                            (net.minecraft.entity.EntityType<? extends net.minecraft.entity.LivingEntity>) type;
 
-                    net.minecraft.util.Identifier id = mob.typeId;
-                    net.minecraft.entity.EntityType<?> type = net.minecraft.registry.Registries.ENTITY_TYPE.get(id);
-
-                    var created = type.create(this.client.world);
-                    if (created instanceof net.minecraft.entity.LivingEntity) {
-                        @SuppressWarnings("unchecked")
-                        net.minecraft.entity.EntityType<? extends net.minecraft.entity.LivingEntity> livingType =
-                                (net.minecraft.entity.EntityType<? extends net.minecraft.entity.LivingEntity>) type;
-
-                        cardList.addCard(new CardListWidget.CardData(
-                                mob.uuid,
-                                mob.name,
-                                livingType,
-                                32,
-                                28,
-                                mob.data, // ★これがNBT
-                                mob.maxHp,
-                                mob.currentHp,
-                                mob.isDead
-                        ));
-                    }
+                    cardList.addCard(new CardListWidget.CardData(
+                            mob.uuid,
+                            mob.name,
+                            livingType,
+                            32,
+                            28,
+                            mob.data,
+                            mob.maxHp,
+                            mob.currentHp,
+                            mob.isDead
+                    ));
                 }
+
             }
         }
 

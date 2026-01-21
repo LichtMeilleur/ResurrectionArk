@@ -53,13 +53,13 @@ public class CardListWidget implements Drawable, Element, Selectable {
     private static final int PREVIEW_W = 72;
     private static final int PREVIEW_H = 72;
 
-    // 名前（黒線の上あたり）
+    // 名前
     private static final int NAME_X = 150;
-    private static final int NAME_Y = 4;
+    private static final int NAME_Y = 12; // 4 → 12
 
-    // 黒枠の右側からステータスを書き始める
-    private static final int STAT_X = PREVIEW_X + PREVIEW_W + 12;
-    private static final int STAT_Y = PREVIEW_Y + 6;
+    // ステータス
+    private static final int STAT_X = PREVIEW_X + PREVIEW_W + 28; // +16
+    private static final int STAT_Y = PREVIEW_Y + 28;            // +22
     private static final int STAT_LINE = 10;
 
     // コスト表示位置
